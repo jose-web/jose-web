@@ -2,7 +2,6 @@
 # JOSE DE LOS SANTOS RAMOS
 y soy desarrollador de aplicaciones web
 
-[👨🏻‍🎓 LinkedIn](https://www.linkedin.com/in/jose-web)
+[![linkedin](img/linkedin.png)](https://www.linkedin.com/in/jose-web)
 
-[🌐 Web](https://jose-web.github.io)
-
+[![linkedin](img/web.png)](https://jose-web.github.io)
