@@ -1,0 +1,217 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="800" height="260" viewBox="0 0 800 260" role="img" aria-labelledby="title">
+	<title id="title">npm (author: jose-web)</title>
+	<style>
+		/* Improved visibility for light backgrounds: dark grayscale palette with opacity */
+		.bg { fill: none; }
+		.card { fill: #000000; fill-opacity: 0.06; stroke: #000000; stroke-opacity: 0.14; stroke-width: 1; rx: 8; }
+		.name { fill: #000000; fill-opacity: 0.92; font-size: 16px; font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial; font-weight: 700; }
+		.meta { fill: #000000; fill-opacity: 0.74; font-size: 12px; font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial; }
+		.desc { fill: #000000; fill-opacity: 0.66; font-size: 12px; font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial; }
+		.small { font-size: 11px; fill: #000000; fill-opacity: 0.60; }
+		/* Background npm logo (official path) style — dark/grayscale with low opacity for light backgrounds */
+		.logo-path { fill: #000000; fill-opacity: 0.015; stroke: #000000; stroke-opacity: 0.04; stroke-width: 5; }
+	</style>
+
+	<!-- transparent background rect (kept for sizing but transparent) -->
+	<rect class="bg" width="100%" height="100%" />
+
+	<!-- npm official logo as background (smaller, centered, non-interactive) -->
+	<!-- technique: translate to desired center (400,130), scale down, then translate by -originalCenter(390,125) -->
+	<g id="bg-logo" transform="translate(400,130) scale(0.4) translate(-390,-125)" aria-hidden="true" pointer-events="none">
+		<path class="logo-path" d="M240,250h100v-50h100V0H240V250z M340,50h50v100h-50V50z M480,0v200h100V50h50v150h50V50h50v150h50V0H480z M0,200h100V50h50v150h50V0H0V200z" />
+	</g>
+
+	<g id="content" transform="translate(16,16)"></g>
+
+	<script type="application/ecmascript"><![CDATA[
+	(function(){
+		const svgNS = 'http://www.w3.org/2000/svg';
+		const url = 'https://registry.npmjs.org/-/v1/search?text=author:jose-web';
+
+		// Fallback JSON (respuesta proporcionada por el usuario)
+		const fallback = {"objects":[{"downloads":{"monthly":1415,"weekly":110},"dependents":0,"updated":"2025-11-06T21:41:09.807Z","searchScore":36.224674,"package":{"name":"@some-angular-utils/table","keywords":[],"version":"0.1.6","description":"Angular table utility library","sanitized_name":"@some-angular-utils/table","publisher":{"email":"delossantosramosjose@gmail.com","username":"jose-web"},"maintainers":[{"email":"delossantosramosjose@gmail.com","username":"jose-web"}],"date":"2025-10-30T21:37:04.433Z","links":{"homepage":"https://github.com/some-angular-utils/table#readme","repository":"git+https://github.com/some-angular-utils/table.git","bugs":"https://github.com/some-angular-utils/table/issues","npm":"https://www.npmjs.com/package/@some-angular-utils/table"}},"score":{"final":36.224674,"detail":{"popularity":1,"quality":1,"maintenance":1}},"flags":{"insecure":0}},{"downloads":{"monthly":432,"weekly":5},"dependents":0,"updated":"2025-11-04T19:41:37.125Z","searchScore":30.130766,"package":{"name":"jose-utils","keywords":["validator"],"version":"1.0.5","description":"Some utils","sanitized_name":"jose-utils","publisher":{"email":"delossantosramosjose@gmail.com","username":"jose-web"},"maintainers":[{"email":"delossantosramosjose@gmail.com","username":"jose-web"}],"license":"ISC","date":"2025-10-07T19:20:27.562Z","links":{"homepage":"https://github.com/jose-web/jose-utils#readme","repository":"git+https://github.com/jose-web/jose-utils.git","bugs":"https://github.com/jose-web/jose-utils/issues","npm":"https://www.npmjs.com/package/jose-utils"}},"score":{"final":30.130766,"detail":{"popularity":1,"quality":1,"maintenance":1}},"flags":{"insecure":0}}],"total":2,"time":"2025-11-11T14:43:34.808Z"};
+
+		function $(id){ return document.getElementById(id); }
+
+		function clearContent(){
+			const c = $('content');
+			while(c.firstChild) c.removeChild(c.firstChild);
+		}
+
+		function createText(parent, x, y, text, cssClass){
+			const t = document.createElementNS(svgNS, 'text');
+			t.setAttribute('x', x);
+			t.setAttribute('y', y);
+			if (cssClass) t.setAttribute('class', cssClass);
+			t.textContent = text;
+			parent.appendChild(t);
+			return t;
+		}
+
+		// Ensure a <defs id="svg-defs"> exists and return it
+		function ensureDefs(){
+			let d = document.getElementById('svg-defs');
+			if (!d){
+				d = document.createElementNS(svgNS, 'defs');
+				d.setAttribute('id', 'svg-defs');
+				// insert defs as first child of svg
+				document.documentElement.insertBefore(d, document.documentElement.firstChild);
+			}
+			// clear previous dynamic defs to avoid accumulation
+			while(d.firstChild) d.removeChild(d.firstChild);
+			return d;
+		}
+
+		// Create an SVG text element that is truncated with an ellipsis if it overflows maxWidth (uses getComputedTextLength)
+		function truncateText(parent, x, y, text, cssClass, maxWidth){
+			const t = document.createElementNS(svgNS, 'text');
+			t.setAttribute('x', x);
+			t.setAttribute('y', y);
+			if (cssClass) t.setAttribute('class', cssClass);
+			// Fast path: if no maxWidth provided, just append
+			if (!maxWidth){
+				t.textContent = text;
+				parent.appendChild(t);
+				return t;
+			}
+			parent.appendChild(t);
+			// Binary search for max fitting characters
+			let low = 0, high = text.length, fit = 0;
+			while (low <= high){
+				const mid = Math.floor((low + high) / 2);
+				const substr = text.slice(0, mid) + (mid < text.length ? '…' : '');
+				t.textContent = substr;
+				try{
+					const len = t.getComputedTextLength();
+					if (len <= maxWidth){ fit = mid; low = mid + 1; }
+					else { high = mid - 1; }
+				}catch(e){
+					// If getComputedTextLength not available, fallback to simple truncation
+					const approx = Math.floor(maxWidth / 7); // avg char width ~7px
+					t.textContent = text.slice(0, Math.max(0, approx - 1)) + (text.length > approx ? '…' : '');
+					return t;
+				}
+			}
+			// set final content
+			t.textContent = text.slice(0, fit) + (fit < text.length ? '…' : '');
+			return t;
+		}
+
+		function render(data){
+			clearContent();
+			const content = $('content');
+			const objs = (data && data.objects) ? data.objects : [];
+
+			// Layout settings
+			const svgEl = document.documentElement;
+			const svgWidth = parseFloat(svgEl.getAttribute('width')) || 800;
+			const margin = 16;
+			const gap = 12;
+			const cardH = 100;
+			// Max height we're comfortable showing without creating absurdly tall images.
+			// If more items than fit, we will create multiple columns.
+			const maxDisplayHeight = 1200; // px
+
+			// Calculate maximum rows per column based on maxDisplayHeight
+			const rowsPerColumn = Math.max(1, Math.floor((maxDisplayHeight - margin*2 + gap) / (cardH + gap)));
+			const total = objs.length;
+			const columns = Math.max(1, Math.ceil(total / rowsPerColumn));
+
+			// Compute card width per column
+			const cardW = Math.floor((svgWidth - margin*2 - gap*(columns-1)) / columns);
+
+			// Actual rows this layout will use
+			const rowsThisLayout = Math.min(rowsPerColumn, total);
+
+			// create defs once per render (do not clear per-card)
+			const defs = ensureDefs();
+			objs.forEach((o, i) => {
+				const pkg = o.package || {};
+				const col = Math.floor(i / rowsPerColumn);
+				const row = i % rowsPerColumn;
+				const x = margin + col * (cardW + gap);
+				const y = margin + row * (cardH + gap);
+
+				const g = document.createElementNS(svgNS, 'g');
+				g.setAttribute('transform', `translate(${x},${y})`);
+
+				const rect = document.createElementNS(svgNS, 'rect');
+				rect.setAttribute('class', 'card');
+				rect.setAttribute('x', 0);
+				rect.setAttribute('y', 0);
+				rect.setAttribute('width', cardW);
+				rect.setAttribute('height', cardH);
+				rect.setAttribute('rx', 10);
+				g.appendChild(rect);
+
+				// create a clipPath per card to ensure overflow:hidden behavior
+				const clipId = 'clip-' + i + '-' + Date.now();
+				const clip = document.createElementNS(svgNS, 'clipPath');
+				clip.setAttribute('id', clipId);
+				const crect = document.createElementNS(svgNS, 'rect');
+				crect.setAttribute('x', 0);
+				crect.setAttribute('y', 0);
+				crect.setAttribute('width', cardW);
+				crect.setAttribute('height', cardH);
+				clip.appendChild(crect);
+				defs.appendChild(clip);
+				g.setAttribute('clip-path', 'url(#' + clipId + ')');
+
+				// Text positions are relative to card; keep some padding
+				const nameX = 12;
+				const nameY = 26;
+				const metaY = 46;
+				const descY = 46;
+				const smallY = 70;
+				// description X depends on available width; allow it to span most of the card
+				const descX = 14 + Math.min(240, Math.max(0, cardW - 200));
+				const rightPadding = 12;
+				const descMaxWidth = Math.max(20, cardW - descX - rightPadding);
+
+				// Use truncateText so long strings get an ellipsis
+				truncateText(g, nameX, nameY, pkg.name || '—', 'name', Math.max(40, cardW - 40));
+				createText(g, 12, metaY, `v${pkg.version || '—'}` , 'meta');
+				truncateText(g, descX, descY, pkg.description || '', 'desc', descMaxWidth);
+				createText(g, 12, smallY, `monthly downloads: ${o.downloads ? o.downloads.monthly : '—'}`, 'small');
+				truncateText(g, descX, smallY, `updated: ${pkg.date ? new Date(pkg.date).toLocaleDateString() : '—'}`, 'small', descMaxWidth);
+
+				// link to npm (as <a> element inside SVG)
+				if (pkg.links && pkg.links.npm){
+					const a = document.createElementNS(svgNS, 'a');
+					a.setAttributeNS('http://www.w3.org/1999/xlink', 'xlink:href', pkg.links.npm);
+					a.setAttribute('target', '_blank');
+					const more = document.createElementNS(svgNS, 'text');
+					more.setAttribute('x', Math.max(80, cardW - 110));
+					more.setAttribute('y', 26);
+					more.setAttribute('class', 'meta');
+					more.textContent = 'view on npm ↗';
+					a.appendChild(more);
+					g.appendChild(a);
+				}
+
+				content.appendChild(g);
+			});
+
+			// Adjust SVG height to contain all rows
+			const usedRows = Math.ceil(total / columns);
+			const neededH = margin*2 + usedRows * (cardH + gap) - gap;
+			svgEl.setAttribute('height', Math.max(260, neededH));
+			svgEl.setAttribute('viewBox', `0 0 ${svgWidth} ${Math.max(260, neededH)}`);
+		}
+
+		// Try fetching remote data; if it fails, use fallback
+		fetch(url, { mode: 'cors' }).then(function(res){
+			if (!res.ok) throw new Error('network response not ok: '+res.status);
+			return res.json();
+		}).then(function(json){
+			render(json);
+		}).catch(function(err){
+			// fallback to provided payload
+			console.warn('Fetch failed, using fallback data:', err);
+			render(fallback);
+		});
+	})();
+	]]></script>
+</svg>
+
